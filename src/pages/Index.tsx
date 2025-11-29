@@ -4,20 +4,20 @@ import SyncedCardStack from "@/components/SyncedCardStack";
 import SwipeHeader from "@/components/SwipeHeader";
 import MatchModal from "@/components/MatchModal";
 import RoomLobby from "@/components/RoomLobby";
-import Leaderboard from "@/components/Leaderboard";
+import SessionSummary from "@/components/SessionSummary";
 import { Restaurant } from "@/components/RestaurantCard";
 import { useSession } from "@/hooks/useSession";
 import { useRoom } from "@/hooks/useRoom";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type View = "landing" | "lobby" | "swiping" | "leaderboard";
+type View = "landing" | "lobby" | "swiping" | "summary";
 
 const Index = () => {
   const [view, setView] = useState<View>("landing");
   const [matchedRestaurant, setMatchedRestaurant] = useState<Restaurant | null>(null);
   const [showMatch, setShowMatch] = useState(false);
+  const [sessionStats, setSessionStats] = useState({ totalSwiped: 0, likesCount: 0 });
   
   const { session } = useSession();
   const { latitude, longitude } = useGeolocation();
@@ -74,11 +74,16 @@ const Index = () => {
   };
 
   const handleStartSwiping = () => {
+    setSessionStats({ totalSwiped: 0, likesCount: 0 });
     setView("swiping");
   };
 
   const handleVote = async (restaurant: Restaurant, voteType: 'like' | 'pass') => {
     await vote(restaurant, voteType);
+    setSessionStats(prev => ({
+      totalSwiped: prev.totalSwiped + 1,
+      likesCount: prev.likesCount + (voteType === 'like' ? 1 : 0),
+    }));
   };
 
   const handleMatch = (restaurant: Restaurant) => {
@@ -89,6 +94,21 @@ const Index = () => {
   const handleCloseMatch = () => {
     setShowMatch(false);
     setMatchedRestaurant(null);
+  };
+
+  const handleSessionEnd = () => {
+    setView("summary");
+  };
+
+  const handlePlayAgain = async () => {
+    setSessionStats({ totalSwiped: 0, likesCount: 0 });
+    setView("lobby");
+  };
+
+  const handleGoHome = async () => {
+    await leaveRoom();
+    setSessionStats({ totalSwiped: 0, likesCount: 0 });
+    setView("landing");
   };
 
   const handleBack = async () => {
@@ -107,19 +127,10 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {view === "landing" && (
-        <>
-          <LandingPage 
-            onCreateRoom={handleCreateRoom} 
-            onJoinRoom={handleJoinRoom} 
-          />
-          {/* Leaderboard button */}
-          <button
-            onClick={() => setView("leaderboard")}
-            className="fixed bottom-20 right-4 w-14 h-14 rounded-full gradient-primary flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
-          >
-            <Trophy className="w-6 h-6 text-foreground" />
-          </button>
-        </>
+        <LandingPage 
+          onCreateRoom={handleCreateRoom} 
+          onJoinRoom={handleJoinRoom} 
+        />
       )}
 
       {view === "lobby" && room && (
@@ -143,6 +154,7 @@ const Index = () => {
             matches={matches}
             onVote={handleVote}
             onMatch={handleMatch}
+            onSessionEnd={handleSessionEnd}
             roomLocation={{ 
               lat: room.location_lat ? Number(room.location_lat) : null, 
               lng: room.location_lng ? Number(room.location_lng) : null 
@@ -151,8 +163,14 @@ const Index = () => {
         </>
       )}
 
-      {view === "leaderboard" && (
-        <Leaderboard onBack={() => setView("landing")} />
+      {view === "summary" && (
+        <SessionSummary
+          matches={matches}
+          totalSwiped={sessionStats.totalSwiped}
+          likesCount={sessionStats.likesCount}
+          onPlayAgain={handlePlayAgain}
+          onGoHome={handleGoHome}
+        />
       )}
 
       <MatchModal
