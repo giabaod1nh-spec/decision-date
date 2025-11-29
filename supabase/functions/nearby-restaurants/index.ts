@@ -37,12 +37,15 @@ serve(async (req) => {
     const url = `https://serpapi.com/search.json?engine=google_maps&q=${encodeURIComponent(searchQuery)}&ll=@${lat},${long},14z&api_key=${serpApiKey}`;
     
     console.log('Calling SerpAPI...');
+    console.log('API Key length:', serpApiKey.length, 'First 4 chars:', serpApiKey.substring(0, 4));
     const response = await fetch(url);
     
     if (!response.ok) {
+      const errorBody = await response.text();
       console.error('SerpAPI error:', response.status, response.statusText);
+      console.error('SerpAPI error body:', errorBody);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch restaurants' }),
+        JSON.stringify({ error: 'Failed to fetch restaurants', details: errorBody }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
