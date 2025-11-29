@@ -17,6 +17,7 @@ interface SyncedCardStackProps {
   matches: Match[];
   onVote: (restaurant: Restaurant, voteType: 'like' | 'pass') => void;
   onMatch: (restaurant: Restaurant) => void;
+  onSessionEnd: () => void;
   roomLocation?: { lat: number | null; lng: number | null };
 }
 
@@ -27,6 +28,7 @@ const SyncedCardStack = ({
   matches,
   onVote,
   onMatch,
+  onSessionEnd,
   roomLocation
 }: SyncedCardStackProps) => {
   const { latitude, longitude, error: geoError, loading: geoLoading } = useGeolocation();
@@ -34,6 +36,7 @@ const SyncedCardStack = ({
   
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [sessionEnded, setSessionEnded] = useState(false);
 
   // Use room location if available, otherwise use user's location
   const effectiveLat = roomLocation?.lat || latitude;
@@ -161,21 +164,45 @@ const SyncedCardStack = ({
     );
   }
 
-  // No more restaurants
-  if (restaurantsError || currentIndex >= restaurants.length) {
+  // No more restaurants - trigger session end
+  const isSessionComplete = !restaurantsLoading && restaurants.length > 0 && currentIndex >= restaurants.length;
+  
+  useEffect(() => {
+    if (isSessionComplete && !sessionEnded) {
+      setSessionEnded(true);
+      const timer = setTimeout(() => onSessionEnd(), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSessionComplete, sessionEnded, onSessionEnd]);
+
+  if (isSessionComplete) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-24 h-24 mb-6 rounded-full gradient-primary flex items-center justify-center opacity-50">
-          <span className="text-4xl">🍽️</span>
+        <div className="w-24 h-24 mb-6 rounded-full gradient-primary flex items-center justify-center">
+          <span className="text-4xl">🎉</span>
         </div>
         <h2 className="text-2xl font-bold text-foreground mb-2">
-          {restaurantsError || "No more restaurants!"}
+          All done!
+        </h2>
+        <p className="text-muted-foreground">
+          Loading your results...
+        </p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (restaurantsError) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-24 h-24 mb-6 rounded-full bg-destructive/20 flex items-center justify-center">
+          <span className="text-4xl">😕</span>
+        </div>
+        <h2 className="text-2xl font-bold text-foreground mb-2">
+          {restaurantsError}
         </h2>
         <p className="text-muted-foreground mb-4">
-          {matches.length > 0 
-            ? `You found ${matches.length} match${matches.length > 1 ? 'es' : ''}!` 
-            : "Check back later for more options"
-          }
+          Try searching a different area
         </p>
         <Button onClick={retry} className="gradient-primary text-foreground">
           <RefreshCw className="w-4 h-4 mr-2" />
