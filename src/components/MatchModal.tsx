@@ -10,6 +10,35 @@ interface MatchModalProps {
   onClose: () => void;
 }
 
+const openGoogleMapsDirections = (restaurant: Restaurant) => {
+  // Build the destination - combine name and address for best results
+  let destination = restaurant.name;
+  
+  if (restaurant.address) {
+    destination = `${restaurant.name}, ${restaurant.address}`;
+  }
+  
+  // Build URL parameters
+  const params = new URLSearchParams({
+    api: '1',
+    travelmode: 'driving',
+    destination: destination,
+  });
+  
+  // Add place_id if available (most accurate)
+  if (restaurant.placeId) {
+    params.set('destination_place_id', restaurant.placeId);
+  }
+  
+  // If we have coordinates, use them as destination for precision
+  if (restaurant.latitude && restaurant.longitude) {
+    params.set('destination', `${restaurant.latitude},${restaurant.longitude}`);
+  }
+  
+  const mapsUrl = `https://www.google.com/maps/dir/?${params.toString()}`;
+  window.open(mapsUrl, '_blank');
+};
+
 const MatchModal = ({ restaurant, isOpen, onClose }: MatchModalProps) => {
   useEffect(() => {
     if (isOpen) {
@@ -127,14 +156,25 @@ const MatchModal = ({ restaurant, isOpen, onClose }: MatchModalProps) => {
                 </div>
               </div>
 
-              {/* Action button */}
-              <button
-                onClick={onClose}
-                className="w-full btn-gradient flex items-center justify-center gap-2 mt-4"
-              >
-                <Navigation className="w-5 h-5" />
-                Let's Go!
-              </button>
+              {/* Action buttons */}
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={onClose}
+                  className="flex-1 btn-secondary"
+                >
+                  Keep Swiping
+                </button>
+                <button
+                  onClick={() => {
+                    openGoogleMapsDirections(restaurant);
+                    onClose();
+                  }}
+                  className="flex-1 btn-gradient flex items-center justify-center gap-2"
+                >
+                  <Navigation className="w-5 h-5" />
+                  Let's Go!
+                </button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

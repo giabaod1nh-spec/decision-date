@@ -8,6 +8,10 @@ export interface Restaurant {
   rating: number;
   distance: string;
   cuisine: string;
+  latitude?: number;
+  longitude?: number;
+  placeId?: string;
+  address?: string;
 }
 
 interface RestaurantCardProps {

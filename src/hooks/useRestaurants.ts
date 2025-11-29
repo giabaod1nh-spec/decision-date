@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { Restaurant } from '@/components/RestaurantCard';
+
+// Use local backend server instead of Supabase
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface UseRestaurantsReturn {
   restaurants: Restaurant[];
@@ -24,14 +26,20 @@ export const useRestaurants = (): UseRestaurantsReturn => {
     try {
       console.log('Fetching restaurants for:', lat, long);
       
-      const { data, error: fnError } = await supabase.functions.invoke('nearby-restaurants', {
-        body: { lat, long },
+      const response = await fetch(`${API_URL}/api/nearby-restaurants`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ lat, long }),
       });
 
-      if (fnError) {
-        console.error('Function error:', fnError);
-        throw new Error(fnError.message || 'Failed to fetch restaurants');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch restaurants');
       }
+
+      const data = await response.json();
 
       if (!data?.restaurants || data.restaurants.length === 0) {
         setError('No restaurants found within 2km');

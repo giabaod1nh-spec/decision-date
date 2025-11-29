@@ -61,6 +61,10 @@ serve(async (req) => {
       image: place.thumbnail || `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80`,
       cuisine: place.type || 'Restaurant',
       distance: place.distance || 'Nearby',
+      latitude: place.gps_coordinates?.latitude,
+      longitude: place.gps_coordinates?.longitude,
+      placeId: place.place_id,
+      address: place.address,
     }));
 
     return new Response(
