@@ -1,10 +1,19 @@
 import { Trophy, Heart, TrendingUp, Home, RotateCcw } from 'lucide-react';
 import { Button } from './ui/button';
-import { Match } from '@/hooks/useRoom';
+import { Vote, Participant } from '@/hooks/useRoom';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
+import { useMemo } from 'react';
+
+interface CalculatedMatch {
+  restaurant_id: string;
+  restaurant_name: string;
+  restaurant_image: string | null;
+  likeCount: number;
+}
 
 interface SessionSummaryProps {
-  matches: Match[];
+  votes: Vote[];
+  participants: Participant[];
   totalSwiped: number;
   likesCount: number;
   onPlayAgain: () => void;
@@ -12,13 +21,53 @@ interface SessionSummaryProps {
 }
 
 const SessionSummary = ({ 
-  matches, 
+  votes,
+  participants,
   totalSwiped, 
   likesCount, 
   onPlayAgain, 
   onGoHome 
 }: SessionSummaryProps) => {
   const { rankings, loading } = useLeaderboard();
+
+  // Calculate matches: restaurants that all active participants liked
+  const matches = useMemo(() => {
+    const activeParticipants = participants.filter(p => p.is_active);
+    if (activeParticipants.length === 0) return [];
+
+    // Group votes by restaurant
+    const votesByRestaurant = votes.reduce((acc, vote) => {
+      if (!acc[vote.restaurant_id]) {
+        acc[vote.restaurant_id] = {
+          name: vote.restaurant_name,
+          image: vote.restaurant_image,
+          likes: [] as string[],
+        };
+      }
+      if (vote.vote_type === 'like') {
+        acc[vote.restaurant_id].likes.push(vote.participant_id);
+      }
+      return acc;
+    }, {} as Record<string, { name: string; image: string | null; likes: string[] }>);
+
+    // Find restaurants where all participants liked
+    const matchedRestaurants: CalculatedMatch[] = [];
+    for (const [restaurantId, data] of Object.entries(votesByRestaurant)) {
+      const allLiked = activeParticipants.every(p => 
+        data.likes.includes(p.id)
+      );
+      if (allLiked) {
+        matchedRestaurants.push({
+          restaurant_id: restaurantId,
+          restaurant_name: data.name,
+          restaurant_image: data.image,
+          likeCount: data.likes.length,
+        });
+      }
+    }
+
+    return matchedRestaurants;
+  }, [votes, participants]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background px-4 py-6 overflow-auto">
@@ -55,15 +104,15 @@ const SessionSummary = ({
         <div className="bg-card rounded-2xl p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Heart className="w-5 h-5 text-accent" />
-            Your Matches
+            Group Matches
           </h2>
           <div className="space-y-3">
             {matches.map((match) => (
-              <div key={match.id} className="flex items-center gap-3 p-3 bg-secondary rounded-xl">
+              <div key={match.restaurant_id} className="flex items-center gap-3 p-3 bg-secondary rounded-xl">
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                  {match.restaurant_data?.image ? (
+                  {match.restaurant_image ? (
                     <img
-                      src={match.restaurant_data.image}
+                      src={match.restaurant_image}
                       alt={match.restaurant_name}
                       className="w-full h-full object-cover"
                     />
@@ -74,13 +123,23 @@ const SessionSummary = ({
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium truncate">{match.restaurant_name}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {match.match_count} people agreed!
+                    Everyone liked this!
                   </p>
                 </div>
                 <div className="text-2xl">🎉</div>
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {matches.length === 0 && (
+        <div className="bg-card rounded-2xl p-6 mb-6 text-center">
+          <div className="text-4xl mb-2">😅</div>
+          <h2 className="text-lg font-semibold mb-2">No Matches Yet</h2>
+          <p className="text-sm text-muted-foreground">
+            No restaurants where everyone agreed. Try again with different choices!
+          </p>
         </div>
       )}
 
