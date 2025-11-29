@@ -1,1 +1,4 @@
 project_id = "bdvrcnaorvutwxoofagn"
+
+[functions.nearby-restaurants]
+verify_jwt = false
