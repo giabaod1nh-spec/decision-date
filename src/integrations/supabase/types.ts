@@ -14,7 +14,202 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      matches: {
+        Row: {
+          id: string
+          match_count: number | null
+          matched_at: string | null
+          restaurant_data: Json | null
+          restaurant_id: string
+          restaurant_name: string
+          room_id: string | null
+        }
+        Insert: {
+          id?: string
+          match_count?: number | null
+          matched_at?: string | null
+          restaurant_data?: Json | null
+          restaurant_id: string
+          restaurant_name: string
+          room_id?: string | null
+        }
+        Update: {
+          id?: string
+          match_count?: number | null
+          matched_at?: string | null
+          restaurant_data?: Json | null
+          restaurant_id?: string
+          restaurant_name?: string
+          room_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_rankings: {
+        Row: {
+          id: string
+          restaurant_data: Json | null
+          restaurant_id: string
+          restaurant_image: string | null
+          restaurant_name: string
+          total_likes: number | null
+          total_matches: number | null
+          total_views: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_data?: Json | null
+          restaurant_id: string
+          restaurant_image?: string | null
+          restaurant_name: string
+          total_likes?: number | null
+          total_matches?: number | null
+          total_views?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_data?: Json | null
+          restaurant_id?: string
+          restaurant_image?: string | null
+          restaurant_name?: string
+          total_likes?: number | null
+          total_matches?: number | null
+          total_views?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      room_participants: {
+        Row: {
+          avatar_emoji: string | null
+          id: string
+          is_active: boolean | null
+          joined_at: string | null
+          nickname: string
+          room_id: string | null
+          user_session_id: string
+        }
+        Insert: {
+          avatar_emoji?: string | null
+          id?: string
+          is_active?: boolean | null
+          joined_at?: string | null
+          nickname: string
+          room_id?: string | null
+          user_session_id: string
+        }
+        Update: {
+          avatar_emoji?: string | null
+          id?: string
+          is_active?: boolean | null
+          joined_at?: string | null
+          nickname?: string
+          room_id?: string | null
+          user_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          code: string
+          created_at: string | null
+          expires_at: string | null
+          host_id: string
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          status: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          expires_at?: string | null
+          host_id: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          status?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          expires_at?: string | null
+          host_id?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          status?: string | null
+        }
+        Relationships: []
+      }
+      votes: {
+        Row: {
+          id: string
+          participant_id: string | null
+          restaurant_id: string
+          restaurant_image: string | null
+          restaurant_name: string
+          restaurant_rating: number | null
+          room_id: string | null
+          vote_type: string
+          voted_at: string | null
+        }
+        Insert: {
+          id?: string
+          participant_id?: string | null
+          restaurant_id: string
+          restaurant_image?: string | null
+          restaurant_name: string
+          restaurant_rating?: number | null
+          room_id?: string | null
+          vote_type: string
+          voted_at?: string | null
+        }
+        Update: {
+          id?: string
+          participant_id?: string | null
+          restaurant_id?: string
+          restaurant_image?: string | null
+          restaurant_name?: string
+          restaurant_rating?: number | null
+          room_id?: string | null
+          vote_type?: string
+          voted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "room_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
