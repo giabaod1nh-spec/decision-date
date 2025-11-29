@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import LandingPage from "@/components/LandingPage";
 import SyncedCardStack from "@/components/SyncedCardStack";
 import SwipeHeader from "@/components/SwipeHeader";
-import MatchModal from "@/components/MatchModal";
 import RoomLobby from "@/components/RoomLobby";
 import SessionSummary from "@/components/SessionSummary";
 import { Restaurant } from "@/components/RestaurantCard";
@@ -15,8 +14,6 @@ type View = "landing" | "lobby" | "swiping" | "summary";
 
 const Index = () => {
   const [view, setView] = useState<View>("landing");
-  const [matchedRestaurant, setMatchedRestaurant] = useState<Restaurant | null>(null);
-  const [showMatch, setShowMatch] = useState(false);
   const [sessionStats, setSessionStats] = useState({ totalSwiped: 0, likesCount: 0 });
   
   const { session } = useSession();
@@ -48,16 +45,7 @@ const Index = () => {
     }
   }, [error, toast]);
 
-  // Watch for new matches from realtime
-  useEffect(() => {
-    if (matches.length > 0) {
-      const latestMatch = matches[matches.length - 1];
-      if (latestMatch.restaurant_data && !showMatch) {
-        setMatchedRestaurant(latestMatch.restaurant_data);
-        setShowMatch(true);
-      }
-    }
-  }, [matches]);
+  // Don't show match modal during swiping - matches shown at end in summary
 
   const handleCreateRoom = async () => {
     const newRoom = await createRoom(latitude || undefined, longitude || undefined);
@@ -86,15 +74,7 @@ const Index = () => {
     }));
   };
 
-  const handleMatch = (restaurant: Restaurant) => {
-    setMatchedRestaurant(restaurant);
-    setShowMatch(true);
-  };
-
-  const handleCloseMatch = () => {
-    setShowMatch(false);
-    setMatchedRestaurant(null);
-  };
+  // Match modal not used during swiping anymore
 
   const handleSessionEnd = () => {
     setView("summary");
@@ -153,7 +133,6 @@ const Index = () => {
             votes={votes}
             matches={matches}
             onVote={handleVote}
-            onMatch={handleMatch}
             onSessionEnd={handleSessionEnd}
             roomLocation={{ 
               lat: room.location_lat ? Number(room.location_lat) : null, 
@@ -165,19 +144,14 @@ const Index = () => {
 
       {view === "summary" && (
         <SessionSummary
-          matches={matches}
+          votes={votes}
+          participants={participants}
           totalSwiped={sessionStats.totalSwiped}
           likesCount={sessionStats.likesCount}
           onPlayAgain={handlePlayAgain}
           onGoHome={handleGoHome}
         />
       )}
-
-      <MatchModal
-        restaurant={matchedRestaurant}
-        isOpen={showMatch}
-        onClose={handleCloseMatch}
-      />
 
       {/* Loading overlay */}
       {loading && (

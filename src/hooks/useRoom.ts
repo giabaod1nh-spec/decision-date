@@ -29,6 +29,7 @@ export interface Vote {
   participant_id: string;
   restaurant_id: string;
   restaurant_name: string;
+  restaurant_image: string | null;
   vote_type: 'like' | 'pass';
   voted_at: string;
 }

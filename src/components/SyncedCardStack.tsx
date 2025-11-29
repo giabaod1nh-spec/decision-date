@@ -16,7 +16,6 @@ interface SyncedCardStackProps {
   votes: Vote[];
   matches: Match[];
   onVote: (restaurant: Restaurant, voteType: 'like' | 'pass') => void;
-  onMatch: (restaurant: Restaurant) => void;
   onSessionEnd: () => void;
   roomLocation?: { lat: number | null; lng: number | null };
 }
@@ -27,7 +26,6 @@ const SyncedCardStack = ({
   votes,
   matches,
   onVote,
-  onMatch,
   onSessionEnd,
   roomLocation
 }: SyncedCardStackProps) => {
@@ -69,29 +67,7 @@ const SyncedCardStack = ({
     }
   }, [fetchedRestaurants]);
 
-  // Auto-advance when all participants have voted
-  useEffect(() => {
-    if (!currentRestaurant) return;
-    
-    const allVoted = activeParticipants.length > 0 && 
-      activeParticipants.every(p => 
-        votesOnCurrent.some(v => v.participant_id === p.id)
-      );
-
-    if (allVoted) {
-      const allLiked = votesOnCurrent.every(v => v.vote_type === 'like');
-      
-      if (allLiked && activeParticipants.length > 1) {
-        setTimeout(() => {
-          onMatch(currentRestaurant);
-        }, 500);
-      }
-
-      setTimeout(() => {
-        setCurrentIndex(prev => prev + 1);
-      }, allLiked && activeParticipants.length > 1 ? 2000 : 1000);
-    }
-  }, [votesOnCurrent.length, activeParticipants.length, currentRestaurant, onMatch]);
+  // No auto-advance effect needed - each user votes independently
 
   // Session end effect - MUST be before returns
   useEffect(() => {
@@ -110,14 +86,9 @@ const SyncedCardStack = ({
     const voteType = direction === "right" ? "like" : "pass";
     onVote(currentRestaurant, voteType);
 
-    // If single player, move immediately
-    if (activeParticipants.length <= 1) {
-      if (direction === "right" && Math.random() > 0.6) {
-        setTimeout(() => onMatch(currentRestaurant), 300);
-      }
-      setCurrentIndex(prev => prev + 1);
-    }
-  }, [currentRestaurant, hasVotedOnCurrent, onVote, onMatch, activeParticipants.length]);
+    // Move to next card immediately after voting
+    setCurrentIndex(prev => prev + 1);
+  }, [currentRestaurant, hasVotedOnCurrent, onVote]);
 
   // NOW we can have conditional returns (after all hooks)
 
@@ -253,16 +224,13 @@ const SyncedCardStack = ({
         </div>
       </div>
 
-      {/* Action buttons - disabled if already voted */}
-      <div className={hasVotedOnCurrent ? 'opacity-50 pointer-events-none' : ''}>
-        <ActionButtons onSwipe={handleSwipe} />
-      </div>
+      {/* Action buttons */}
+      <ActionButtons onSwipe={handleSwipe} />
 
-      {hasVotedOnCurrent && (
-        <p className="text-center text-sm text-muted-foreground pb-4">
-          Waiting for others to vote...
-        </p>
-      )}
+      {/* Progress indicator */}
+      <p className="text-center text-sm text-muted-foreground pb-4">
+        {currentIndex + 1} of {restaurants.length} restaurants
+      </p>
     </div>
   );
 };
