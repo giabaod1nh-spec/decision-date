@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 import RestaurantCard, { Restaurant } from "./RestaurantCard";
 import ActionButtons from "./ActionButtons";
@@ -36,11 +36,24 @@ const SyncedCardStack = ({
   
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [sessionEnded, setSessionEnded] = useState(false);
+  const sessionEndedRef = useRef(false);
 
   // Use room location if available, otherwise use user's location
   const effectiveLat = roomLocation?.lat || latitude;
   const effectiveLng = roomLocation?.lng || longitude;
+
+  // Derived state
+  const currentRestaurant = restaurants[currentIndex];
+  const hasVotedOnCurrent = currentRestaurant && votes.some(
+    v => v.participant_id === currentParticipantId && v.restaurant_id === currentRestaurant.id
+  );
+  const activeParticipants = participants.filter(p => p.is_active);
+  const votesOnCurrent = currentRestaurant 
+    ? votes.filter(v => v.restaurant_id === currentRestaurant.id)
+    : [];
+  const isSessionComplete = !restaurantsLoading && restaurants.length > 0 && currentIndex >= restaurants.length;
+
+  // ALL useEffects MUST be before any conditional returns
 
   // Fetch restaurants when location is available
   useEffect(() => {
@@ -56,18 +69,7 @@ const SyncedCardStack = ({
     }
   }, [fetchedRestaurants]);
 
-  // Check if current user has voted on current restaurant
-  const currentRestaurant = restaurants[currentIndex];
-  const hasVotedOnCurrent = currentRestaurant && votes.some(
-    v => v.participant_id === currentParticipantId && v.restaurant_id === currentRestaurant.id
-  );
-
   // Auto-advance when all participants have voted
-  const activeParticipants = participants.filter(p => p.is_active);
-  const votesOnCurrent = currentRestaurant 
-    ? votes.filter(v => v.restaurant_id === currentRestaurant.id)
-    : [];
-  
   useEffect(() => {
     if (!currentRestaurant) return;
     
@@ -77,22 +79,30 @@ const SyncedCardStack = ({
       );
 
     if (allVoted) {
-      // Check for match (all liked)
       const allLiked = votesOnCurrent.every(v => v.vote_type === 'like');
       
       if (allLiked && activeParticipants.length > 1) {
-        // It's a match!
         setTimeout(() => {
           onMatch(currentRestaurant);
         }, 500);
       }
 
-      // Move to next restaurant after a delay
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
       }, allLiked && activeParticipants.length > 1 ? 2000 : 1000);
     }
-  }, [votesOnCurrent.length, activeParticipants.length, currentRestaurant]);
+  }, [votesOnCurrent.length, activeParticipants.length, currentRestaurant, onMatch]);
+
+  // Session end effect - MUST be before returns
+  useEffect(() => {
+    if (isSessionComplete && !sessionEndedRef.current) {
+      sessionEndedRef.current = true;
+      const timer = setTimeout(() => {
+        onSessionEnd();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSessionComplete, onSessionEnd]);
 
   const handleSwipe = useCallback((direction: "left" | "right") => {
     if (!currentRestaurant || hasVotedOnCurrent) return;
@@ -108,6 +118,8 @@ const SyncedCardStack = ({
       setCurrentIndex(prev => prev + 1);
     }
   }, [currentRestaurant, hasVotedOnCurrent, onVote, onMatch, activeParticipants.length]);
+
+  // NOW we can have conditional returns (after all hooks)
 
   // Location loading state
   if (geoLoading && !roomLocation?.lat) {
@@ -164,17 +176,7 @@ const SyncedCardStack = ({
     );
   }
 
-  // No more restaurants - trigger session end
-  const isSessionComplete = !restaurantsLoading && restaurants.length > 0 && currentIndex >= restaurants.length;
-  
-  useEffect(() => {
-    if (isSessionComplete && !sessionEnded) {
-      setSessionEnded(true);
-      const timer = setTimeout(() => onSessionEnd(), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isSessionComplete, sessionEnded, onSessionEnd]);
-
+  // Session complete state
   if (isSessionComplete) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
